@@ -1,0 +1,15 @@
+[Unit]
+Description=ESP live testing
+After=network.target
+Wants=network-online.target
+
+[Service]
+Restart=always
+Type=simple
+User=root
+WorkingDirectory=/home/esplive
+ExecStart=/snap/bin/node /home/esplive/esplive.cjs
+Environment=PORT=31223
+
+[Install]
+WantedBy=multi-user.target
