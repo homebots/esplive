@@ -1,3 +1,4 @@
 .env
-esplive.conf.js
+esplive.conf.mjs
+test.esp
 

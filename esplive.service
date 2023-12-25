@@ -8,7 +8,7 @@ Restart=always
 Type=simple
 User=root
 WorkingDirectory=/home/esplive
-ExecStart=/snap/bin/node /home/esplive/esplive.cjs
+ExecStart=/snap/bin/node /home/esplive/esplive.mjs
 Environment=PORT=31223
 
 [Install]
