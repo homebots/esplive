@@ -1,6 +1,6 @@
 import { request, createServer } from "node:http";
 import { writeFile } from "node:fs/promises";
-import { readdirSync } from "node:fs";
+import { readdirSync, createReadStream } from "node:fs";
 import { spawnSync as sh } from "node:child_process";
 import { join } from "node:path";
 
@@ -213,4 +213,12 @@ async function serve(req, res) {
     await esp_reset();
     res.end();
   }
+
+  if (req.url === "/cat") {
+    const { SERIAL_PORT } = await getEnv();
+    createReadStream(SERIAL_PORT).pipe(res);
+    return;
+  }
+
+  res.writeHead(404).end('Not found');
 }
