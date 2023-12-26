@@ -1,4 +1,5 @@
 .env
 esplive.conf.mjs
 test.esp
+firmware/*.bin
 
