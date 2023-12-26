@@ -1,7 +1,7 @@
 import { request, createServer } from "node:http";
-import { writeFile } from "node:fs/promises";
+import { writeFile, open } from "node:fs/promises";
 import { readdirSync, createReadStream } from "node:fs";
-import { spawnSync as sh } from "node:child_process";
+import { spawn, spawnSync as sh } from "node:child_process";
 import { join } from "node:path";
 
 let _env = null;
@@ -125,7 +125,7 @@ async function readStream(s) {
 
 createServer(async (req, res) => {
   try {
-    console.log('[%s] %s %s', new Date().toISOString().slice(0, 10), req.method, req.url);
+    console.log('[%s] %s %s', new Date().toISOString().slice(0, 19), req.method, req.url);
     await serve(req, res);
   } catch (e) {
     console.log(e);
@@ -137,8 +137,20 @@ createServer(async (req, res) => {
 
 async function serve(req, res) {
   const { ESP_URL } = await getEnv();
+  const url = new URL(req.url, 'http://localhost');
+  const route = `${req.method} ${url.pathname}`;
+  
+  if (route === "GET /") {
+    readSerialOnce(req, res);
+    return;
+  }  
 
-  if (req.method === "GET") {
+  if (route === "GET /cat") {
+    readSerialPort(req, res);
+    return;
+  }
+
+  if (route === "GET /buffer") {
     const esp = request(ESP_URL);
     esp.on("response", (r) => r.pipe(res));
     esp.end();
@@ -214,11 +226,47 @@ async function serve(req, res) {
     res.end();
   }
 
-  if (req.url === "/cat") {
-    const { SERIAL_PORT } = await getEnv();
-    createReadStream(SERIAL_PORT).pipe(res);
-    return;
-  }
-
   res.writeHead(404).end('Not found');
+}
+
+async function readSerialOnce(req, res) {
+  const { SERIAL_PORT } = await getEnv();
+  createReadStream(SERIAL_PORT).pipe(res);
+}
+
+async function readSerialPort(req, res) {
+  const { SERIAL_PORT } = await getEnv();
+  const fd = await open(SERIAL_PORT, 'r');
+  
+  res.setHeader('content-type', 'text/plain');
+  res.writeHead(200, 'Reading');
+  let reading = true;
+  const buffer = Buffer.alloc(128).fill(0);
+
+  const readMore = async () => {
+    if (!reading) return;
+
+    const { bytesRead } = await fd.read({ buffer });
+    
+    if (bytesRead) {
+      const slice = buffer.slice(0, bytesRead);
+      res.write(slice.toString('utf8'));
+      console.log(slice.byteLength);
+      buffer.fill(0);
+    }
+
+    setTimeout(readMore, 100);
+  };
+
+  const onclose = () => {
+    console.log('CLOSING');
+    reading = false;
+    fd.close();
+  };
+
+  res.on('end', onclose);
+  req.on('close', onclose);
+  req.on('error', onclose);
+
+  readMore();
 }
