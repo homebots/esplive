@@ -80,8 +80,7 @@ async function esp_connect() {
 
 async function esp_flash() {
   const { SERIAL_PORT } = await getEnv();
-  const files = 
-    readdirSync("./firmware", { encoding: "utf-8" })
+  const files = readdirSync("./firmware", { encoding: "utf-8" })
     .filter((f) => f.startsWith("0x"))
     .flatMap((f) => [f.replace(".bin", ""), "firmware/" + f]);
 
@@ -125,7 +124,12 @@ async function readStream(s) {
 
 createServer(async (req, res) => {
   try {
-    console.log('[%s] %s %s', new Date().toISOString().slice(0, 19), req.method, req.url);
+    console.log(
+      "[%s] %s %s",
+      new Date().toISOString().slice(0, 19),
+      req.method,
+      req.url
+    );
     await serve(req, res);
   } catch (e) {
     console.log(e);
@@ -137,13 +141,13 @@ createServer(async (req, res) => {
 
 async function serve(req, res) {
   const { ESP_URL } = await getEnv();
-  const url = new URL(req.url, 'http://localhost');
+  const url = new URL(req.url, "http://localhost");
   const route = `${req.method} ${url.pathname}`;
-  
+
   if (route === "GET /") {
     readSerialOnce(req, res);
     return;
-  }  
+  }
 
   if (route === "GET /cat") {
     readSerialPort(req, res);
@@ -205,7 +209,7 @@ async function serve(req, res) {
   if (req.url === "/run") {
     const buffer = await readStream(req);
     console.log("Sending %d bytes to run at %s", buffer.length, ESP_URL);
-    // TODO support https? 
+    // TODO support https?
     const r = request(ESP_URL, {
       method: "POST",
       headers: {
@@ -226,7 +230,7 @@ async function serve(req, res) {
     res.end();
   }
 
-  res.writeHead(404).end('Not found');
+  res.writeHead(404).end("Not found");
 }
 
 async function readSerialOnce(req, res) {
@@ -236,21 +240,20 @@ async function readSerialOnce(req, res) {
 
 async function readSerialPort(req, res) {
   const { SERIAL_PORT } = await getEnv();
-  const fd = await open(SERIAL_PORT, 'r');
-  
-  res.setHeader('content-type', 'text/plain');
-  res.writeHead(200, 'Reading');
+  const fd = await open(SERIAL_PORT, "r");
+
+  res.setHeader("content-type", "text/plain");
+  res.writeHead(200, "Reading");
   let reading = true;
-  const buffer = Buffer.alloc(128).fill(0);
 
   const readMore = async () => {
     if (!reading) return;
 
+    const buffer = Buffer.allocUnsafe(1024).fill(0);
     const { bytesRead } = await fd.read({ buffer });
-    
+
     if (bytesRead) {
-      const slice = buffer.slice(0, bytesRead);
-      res.write(slice.toString('utf8'));
+      res.write(slice);
       console.log(slice.byteLength);
       buffer.fill(0);
     }
@@ -259,14 +262,16 @@ async function readSerialPort(req, res) {
   };
 
   const onclose = () => {
-    console.log('CLOSING');
+    if (!reading) return;
+
+    console.log("CLOSING");
     reading = false;
     fd.close();
   };
 
-  res.on('end', onclose);
-  req.on('close', onclose);
-  req.on('error', onclose);
+  res.on("end", onclose);
+  req.on("close", onclose);
+  req.on("error", onclose);
 
   readMore();
 }
