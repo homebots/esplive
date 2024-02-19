@@ -122,29 +122,17 @@ async function readStream(s) {
   });
 }
 
-createServer(async (req, res) => {
-  try {
-    console.log(
-      "[%s] %s %s",
-      new Date().toISOString().slice(0, 19),
-      req.method,
-      req.url
-    );
-    await serve(req, res);
-  } catch (e) {
-    console.log(e);
-    res.socket.destroy(e);
-  }
-}).listen(process.env.PORT, () => {
-  console.log("Listening on " + process.env.PORT);
-});
-
 async function serve(req, res) {
   const { ESP_URL } = await getEnv();
   const url = new URL(req.url, "http://localhost");
   const route = `${req.method} ${url.pathname}`;
 
   if (route === "GET /") {
+    createReadStream('./index.html').pipe(res);
+    return;
+  }
+
+  if (route === "GET /cat-once") {
     readSerialOnce(req, res);
     return;
   }
@@ -275,3 +263,15 @@ async function readSerialPort(req, res) {
 
   readMore();
 }
+
+createServer(async (req, res) => {
+  try {
+    console.log('[%s] %s %s', new Date().toISOString().slice(0, 19), req.method, req.url);
+    await serve(req, res);
+  } catch (e) {
+    console.log(e);
+    res.socket.destroy(e);
+  }
+}).listen(Number(process.env.PORT), '0.0.0.0', () => {
+  console.log("Listening on " + process.env.PORT);
+});

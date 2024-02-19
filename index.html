@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ESP</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css"
+    />
+  </head>
+  <body class="bg-gray-100">
+    <main class="w-screen h-screen flex">
+      <div class="w-1/2 p-4 flex flex-col">
+        <div class="text-right">
+          <button id="sendProgram" class="p-2">run</button>
+        </div>
+        <textarea
+          class="w-full rounded p-2 font-mono h-72 border flex-grow"
+          id="editor"
+        ></textarea>
+      </div>
+      <div class="w-1/2 p-4">
+        <div class="flex items-center">
+          <button id="readBuffer" class="p-2">read buffer</button>
+          <button id="prepare" class="p-2">erase fw</button>
+          <button id="flash" class="p-2">flash</button>
+          <button id="connect" class="p-2">connect</button>
+          <button id="reset" class="p-2">reset</button>
+        </div>
+        <pre
+          id="buffer"
+          class="font-mono overflow-auto whitespace-nowrap p-4 rounded border bg-white h-72"
+        ></pre>
+      </div>
+    </main>
+
+    <script type="module">
+      import { compile } from "https://esp.jsfn.run/index.mjs";
+
+      const action = (name) => () => fetch("/" + name, { method: "POST" });
+
+      window.addEventListener("DOMContentLoaded", () => {
+        readBuffer.onclick = async () => {
+          buffer.innerText = "...";
+          const res = await fetch("/buffer");
+          buffer.innerText = await res.text();
+        };
+
+        prepare.onclick = action("prepare");
+        flash.onclick = action("flash");
+        connect.onclick = action("connect");
+        reset.onclick = action("reset");
+
+        sendProgram.onclick = async () => {
+          const text = editor.value.trim();
+          if (!text) return;
+          const program = await compile(text);
+          fetch("/run", { method: "POST", body: program });
+        };
+      });
+    </script>
+  </body>
+</html>
