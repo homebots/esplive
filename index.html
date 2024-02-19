@@ -12,17 +12,27 @@
   <body class="bg-gray-100">
     <main class="w-screen h-screen flex">
       <div class="w-1/2 p-4 flex flex-col">
-        <div class="text-right">
+        <div class="text-right mb-4">
           <button id="sendProgram" class="p-2">run</button>
         </div>
         <textarea
           class="w-full rounded p-2 font-mono h-72 border flex-grow"
           id="editor"
-        ></textarea>
+        >
+@loop
+  debug 1
+  io write #0, true
+  delay 10000
+  io write #0, false
+  delay 10000
+  dump
+  jump to @loop
+</textarea>
       </div>
-      <div class="w-1/2 p-4">
-        <div class="flex items-center">
+      <div class="w-1/2 p-4 flex flex-col">
+        <div class="flex items-center mb-4">
           <button id="readBuffer" class="p-2">read buffer</button>
+          <button id="readSerial" class="p-2">read serial</button>
           <button id="prepare" class="p-2">erase fw</button>
           <button id="flash" class="p-2">flash</button>
           <button id="connect" class="p-2">connect</button>
@@ -30,34 +40,46 @@
         </div>
         <pre
           id="buffer"
-          class="font-mono overflow-auto whitespace-nowrap p-4 rounded border bg-white h-72"
+          class="font-mono overflow-auto whitespace-nowrap p-4 rounded border bg-white h-72 flex-grow"
         ></pre>
       </div>
     </main>
 
     <script type="module">
       import { compile } from "https://esp.jsfn.run/index.mjs";
+      
+      const action = (button, name) => {
+        const c = 'bg-gray-200'
+        button.onclick = async () => {
+          button.classList.add(c)
+          await fetch("/" + name, { method: "POST" });
+          button.classList.remove(c)
+        };
+      };
 
-      const action = (name) => () => fetch("/" + name, { method: "POST" });
+      const readAction = (action) => async () => {
+        buffer.innerText = "...";
+        const res = await fetch("/" + action);
+        buffer.innerText = await res.text();
+      };
 
       window.addEventListener("DOMContentLoaded", () => {
-        readBuffer.onclick = async () => {
-          buffer.innerText = "...";
-          const res = await fetch("/buffer");
-          buffer.innerText = await res.text();
-        };
+        readBuffer.onclick = readAction('buffer')
+        readSerial.onclick = readAction('cat-once')
 
-        prepare.onclick = action("prepare");
-        flash.onclick = action("flash");
-        connect.onclick = action("connect");
-        reset.onclick = action("reset");
+        action(prepare, "prepare");
+        action(flash, "flash");
+        action(connect, "connect");
+        action(reset, "reset");
 
         sendProgram.onclick = async () => {
           const text = editor.value.trim();
           if (!text) return;
-          const program = await compile(text);
-          fetch("/run", { method: "POST", body: program });
+          const program = await compile(text, {buffer:true});
+          fetch("/run", { method: "POST", body: await program.arrayBuffer() });
         };
+
+        
       });
     </script>
   </body>

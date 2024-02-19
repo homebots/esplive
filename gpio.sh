@@ -1,4 +1,5 @@
-source ./.env
+source .env
+
 # .env has the following:
 # SYSFS=/sys/class/gpio		sysfs path to use
 # RESET=123			pin id used for reset
@@ -61,3 +62,5 @@ esp_hex2bin() {
 esp_flash() {
     esptool.py --port $SERIAL_PORT --baud 115200  write_flash --compress --flash_freq 80m -fm qio -fs 1MB 0x00000 firmware/0x00000.bin 0x10000 firmware/0x10000.bin
 }
+
+set -xe

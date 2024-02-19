@@ -186,6 +186,7 @@ async function serve(req, res) {
 
     res.writeHead(202);
     res.end();
+    return;
   }
 
   if (req.url === "/connect") {
@@ -206,7 +207,10 @@ async function serve(req, res) {
       },
     });
 
-    r.on("response", (esp) => esp.pipe(res));
+    r.on("response", (esp) => {
+      res.on('data', c => res.write(c));
+      res.on('end', () => res.end());
+    });
     r.write(buffer);
     r.end();
     return;
@@ -216,6 +220,7 @@ async function serve(req, res) {
     console.log("reset");
     await esp_reset();
     res.end();
+    return;
   }
 
   res.writeHead(404).end("Not found");
