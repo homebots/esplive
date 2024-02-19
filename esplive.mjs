@@ -207,9 +207,9 @@ async function serve(req, res) {
       },
     });
 
-    r.on("response", (esp) => {
-      res.on('data', c => res.write(c));
-      res.on('end', () => res.end());
+    r.on('response', esp => {
+      esp.on('data', c => res.write(c));
+      esp.on('end', () => res.end());
     });
     r.write(buffer);
     r.end();
