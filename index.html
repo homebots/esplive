@@ -10,45 +10,35 @@
     />
   </head>
   <body class="bg-gray-100">
-    <main class="w-screen h-screen flex">
-      <div class="w-1/2 p-4 flex flex-col">
+    <main class="w-screen h-screen flex flex-col md:flex-row">
+      <div class="md:w-1/2 h-1/2 md:h-auto p-2 flex flex-col">
         <div class="text-right mb-4">
           <button id="sendProgram" class="p-2">run</button>
         </div>
-        <textarea
-          class="w-full rounded p-2 font-mono h-72 border flex-grow"
-          id="editor"
-        >
-debug true
-dump
-
-@loop
-  io write #0, true
-  delay 10000
-  io write #0, false
-  delay 10000
-  jump to @loop
-</textarea>
+        <div class="w-full rounded font-mono border flex-grow bg-white overflow-hidden" id="editorArea"></div>
       </div>
-      <div class="w-1/2 p-4 flex flex-col">
-        <div class="flex items-center mb-4">
+      <div class="md:w-1/2 p-3 flex flex-col">
+        <div class="flex items-center mb-4 justify-between text-sm">
           <button id="readBuffer" class="p-2">read buffer</button>
           <button id="readSerial" class="p-2">read serial</button>
+          <button id="streamSerial" class="p-2">stream serial</button>
           <button id="prepare" class="p-2">erase fw</button>
           <button id="flash" class="p-2">flash</button>
           <button id="connect" class="p-2">connect</button>
           <button id="reset" class="p-2">reset</button>
+          <button id="iotest" class="p-2">io test</button>
           <button id="clear" class="p-2">clear</button>
         </div>
         <pre
           id="buffer"
-          class="font-mono overflow-auto whitespace-nowrap p-4 rounded border bg-white h-72 flex-grow"
+          class="font-mono overflow-auto whitespace-nowrap p-4 rounded border bg-white flex-grow"
         ></pre>
       </div>
     </main>
 
     <script type="module">
       import { compile } from "https://esp.jsfn.run/index.mjs";
+      import * as cm from "https://codemirror.jsfn.run/index.mjs";
       
       const action = (button, name) => {
         const c = 'bg-gray-200'
@@ -62,7 +52,7 @@ dump
       const readAction = (action) => async () => {
         const res = await fetch("/" + action);
         if (!res.ok) {
-          buffer.innerText = 'Failed';
+          buffer.innerText += 'Failed';
           return;
         }
 
@@ -76,6 +66,9 @@ dump
           const { value, done } = await next;
 
           if (done) {
+            const sep = document.createElement('hr');
+            sep.classList.add('border-b');
+            buffer.append(sep);
             break;
           }
  
@@ -83,34 +76,42 @@ dump
         }
       };
 
-      window.addEventListener("DOMContentLoaded", () => {
-        readBuffer.onclick = readAction('buffer')
-        readSerial.onclick = readAction('cat-once')
+      window.addEventListener("DOMContentLoaded", async () => {
+        readBuffer.onclick = readAction('buffer');
+        readSerial.onclick = readAction('cat-once');
+        streamSerial.onclick = readAction('cat');
 
         action(prepare, "prepare");
         action(flash, "flash");
         action(connect, "connect");
         action(reset, "reset");
+        action(iotest, "io-test");
 
         sendProgram.onclick = async () => {
-          const text = editor.value.trim();
+          const text = window.editor.getValue().trim();
+
           if (!text) return;
+
           const program = await compile(text, {buffer:true});
+
           if (!program.ok) {
-            buffer.innerText = await program.text();
+            buffer.innerText += await program.text();
             return;
           }
 
           const run = await fetch("/run", { method: "POST", body: await program.arrayBuffer() });
           if (!run.ok) {
-            buffer.innerText = 'Failed: ' + await run.text();
+            buffer.innerText += 'Failed to run: ' + await run.text();
             return;
           }
 
           readStream(run);
         };
 
-	clear.onclick = () => buffer.innerText = '';
+        clear.onclick = () => buffer.innerText = '';
+
+        await cm.load();
+        await cm.install('', { target: '#editorArea', name: 'editor', lineNumbers: true });
       });
     </script>
   </body>

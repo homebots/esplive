@@ -6,11 +6,28 @@ source .env
 # GPIO_0=124			pin id used to start flash mode
 # SERIALPORT=/dev/ttyUSB0
 
+esp_gpio_test() {
+  set -xe
+  echo $GPIO_0 > $SYSFS/export
+  echo $GPIO_2 > $SYSFS/export
+  echo out > $SYSFS/gpio$GPIO_0/direction
+  echo out > $SYSFS/gpio$GPIO_2/direction
+  echo 1 > $SYSFS/gpio$GPIO_0/value
+  echo 1 > $SYSFS/gpio$GPIO_2/value
+  sleep 1
+  echo 0 > $SYSFS/gpio$GPIO_0/value
+  echo 0 > $SYSFS/gpio$GPIO_2/value
+  sleep 1
+  echo in > $SYSFS/gpio$GPIO_0/direction
+  echo in > $SYSFS/gpio$GPIO_2/direction
+  echo $GPIO_2 > $SYSFS/unexport
+  echo $GPIO_0 > $SYSFS/unexport
+}
+
 esp_reset() {
   esp_iostart
   echo 1 > $SYSFS/gpio$GPIO_0/value
   echo 1 > $SYSFS/gpio$RESET/value
-
   echo 0 > $SYSFS/gpio$RESET/value
   sleep 1
   echo 1 > $SYSFS/gpio$RESET/value
